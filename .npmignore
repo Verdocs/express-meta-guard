@@ -1,0 +1,8 @@
+/.idea
+__mocks__
+/coverage
+/src
+.prettierrc.js
+jestconfig.json
+tslint.json
+tsconfig.json
