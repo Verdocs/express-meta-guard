@@ -12,7 +12,7 @@ describe('Validators', () => {
   test('validators should be able to throw exceptions', async () => {
     const req = getMockReq({params: {name: 'test'}});
     await MetaGuard({
-      inputs: {
+      parameters: {
         name: {
           in: 'path',
           validator: () => {
@@ -30,7 +30,7 @@ describe('Validators', () => {
   test('validators should be able to return string errors', async () => {
     const req = getMockReq({params: {name: 'test'}});
     await MetaGuard({
-      inputs: {
+      parameters: {
         name: {
           in: 'path',
           validator: () => 'test',
@@ -46,7 +46,7 @@ describe('Validators', () => {
   test('validators should be able to be async', async () => {
     const req = getMockReq({params: {name: 'test'}});
     await MetaGuard({
-      inputs: {
+      parameters: {
         name: {
           in: 'path',
           validator: async () => {
@@ -64,7 +64,7 @@ describe('Validators', () => {
   test('validators that return false mean invalid', async () => {
     const req = getMockReq({params: {name: 'test'}});
     await MetaGuard({
-      inputs: {
+      parameters: {
         name: {
           in: 'path',
           validator: async () => false,
@@ -80,7 +80,7 @@ describe('Validators', () => {
   test('validators that return true mean valid', async () => {
     const req = getMockReq({params: {name: 'test'}});
     await MetaGuard({
-      inputs: {
+      parameters: {
         name: {
           in: 'path',
           validator: async () => true,
@@ -96,7 +96,7 @@ describe('Validators', () => {
   test('validators that return undefined mean valid', async () => {
     const req = getMockReq({params: {name: 'test'}});
     await MetaGuard({
-      inputs: {
+      parameters: {
         name: {
           in: 'path',
           validator: async () => undefined,
@@ -112,7 +112,7 @@ describe('Validators', () => {
   test('missing required fields will report an error', async () => {
     const req = getMockReq({params: {name: 'test'}});
     await MetaGuard({
-      inputs: {
+      parameters: {
         name: {in: 'path'},
         country: {in: 'path', required: true},
       },
@@ -121,5 +121,18 @@ describe('Validators', () => {
 
     expect(next).toBeCalledWith(new Error("Missing required param 'country' in path"));
     expect(res.locals.inputs).toBeUndefined();
+  });
+
+  test('formatters should run before validators', async () => {
+    const req = getMockReq({query: {count: '10'}});
+    await MetaGuard({
+      parameters: {
+        count: {in: 'query', formatter: (val: any) => +val, validator: (val: any) => typeof val === 'number'},
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(next).toBeCalled();
+    expect(res.locals.inputs).toEqual({count: 10});
   });
 });

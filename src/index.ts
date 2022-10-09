@@ -1,60 +1,34 @@
 import {NextFunction, Request, Response} from 'express';
-
-export type TValidator = (val: any, req: Request) => Promise<boolean | string | undefined> | boolean | string | undefined;
-
-export type TFormatter = (val: any, req: Request) => any;
-
-export type TParamSource = 'path' | 'query' | 'header' | 'cookie' | 'body';
-
-export interface IInput {
-  in: TParamSource;
-  description?: string;
-  example?: string;
-  validator?: TValidator;
-  formatter?: TFormatter;
-  required?: boolean;
-  deprecated?: boolean;
-  default?: any;
-}
-
-export interface IMetaGuardProps {
-  path?: string;
-  name?: string;
-  description?: string;
-  tags?: string[];
-  inputs?: Record<string, IInput>;
-  output?: any;
-  annotateLocals?: string;
-}
-
-const getParam = (req: Request, field: string, source: TParamSource) => {
-  if (source === 'path') {
-    return req.params[field];
-  } else if (source === 'query') {
-    return req.query[field];
-  } else if (source === 'body') {
-    return req.body[field];
-  } else if (source === 'header') {
-    return req.headers[field];
-  } else if (source === 'cookie') {
-    return req.cookies[field];
-  }
-
-  return undefined;
-};
+import {IMetaGuardProps} from './types';
+import {getParam, validateSchema} from './params';
+export * from './types';
 
 export const MetaGuard = (props: IMetaGuardProps) => {
   const guard = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedInputs: Record<string, any> = {};
-      const inputs = props.inputs ? Object.entries(props.inputs) : [];
+      const inputs = props.parameters ? Object.entries(props.parameters) : [];
       if (inputs.length > 0) {
         for await (let input of inputs) {
           const [fieldName, fieldConfig] = input;
-          const {in: fieldIn, required = false, validator, formatter, default: fieldDefault} = fieldConfig;
+          const {in: fieldIn, required = false, validator, formatter, schema, default: fieldDefault} = fieldConfig;
 
           let param = getParam(req, fieldName, fieldIn);
           if (param !== undefined) {
+            // Format the data
+            if (formatter) {
+              param = formatter(param, req);
+            }
+
+            // Verify/adjust for its schema
+            try {
+              param = validateSchema(fieldName, fieldIn, param, schema);
+            } catch (e) {
+              next(e);
+              return;
+            }
+
+            // Validate the data
             if (validator) {
               const validationResult = await validator(param, req);
               if (validationResult !== undefined) {
@@ -66,10 +40,6 @@ export const MetaGuard = (props: IMetaGuardProps) => {
                   return;
                 }
               }
-            }
-
-            if (formatter) {
-              param = formatter(param, req);
             }
 
             parsedInputs[fieldName] = param;
@@ -96,7 +66,9 @@ export const MetaGuard = (props: IMetaGuardProps) => {
     }
   };
 
-  guard.metadata = props;
+  if (!props.hidden) {
+    guard.metadata = props;
+  }
 
   return guard;
 };
