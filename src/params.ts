@@ -1,5 +1,5 @@
-import {NextFunction, Request} from 'express';
-import {IParameter, IParameterSchema, TParamSource} from './types';
+import {Request} from 'express';
+import {IParameterSchema, TParamSource} from './types';
 
 export const getParam = (req: Request, field: string, source: TParamSource) => {
   if (source === 'path') {
@@ -23,29 +23,47 @@ export const validateSchema = (fieldName: string, fieldIn: string, param: any, s
   }
 
   // Do any conversions necessary
+  let newParam = param;
   if (schema.type === 'string' && typeof param !== 'string') {
-    return '' + param;
+    newParam = '' + param;
   } else if (schema.type === 'integer' && typeof param === 'string') {
-    const newParam = +param;
+    newParam = +param;
     if (isNaN(newParam)) {
-      throw new Error(`Invalid param '${fieldName}' in ${fieldIn}`);
+      throw new Error(`Invalid param '${fieldName}' in ${fieldIn}: integer required`);
     }
-
-    return newParam;
   } else if (schema.type === 'number' && typeof param === 'string') {
-    const newParam = parseFloat(param);
+    newParam = parseFloat(param);
     if (isNaN(newParam)) {
-      throw new Error(`Invalid param '${fieldName}' in ${fieldIn}`);
+      throw new Error(`Invalid param '${fieldName}' in ${fieldIn}: number required`);
     }
-
-    return newParam;
   } else if (schema.type === 'boolean' && typeof param === 'string') {
     if (!['0', '1', 'True', 'False', 'TRUE', 'FALSE', 'true', 'false'].includes(param)) {
-      throw new Error(`Invalid param '${fieldName}' in ${fieldIn}`);
+      throw new Error(`Invalid param '${fieldName}' in ${fieldIn}: boolean required`);
     }
 
-    return param === '1' || param === 'True' || param === 'TRUE' || param === 'true';
+    newParam = param === '1' || param === 'True' || param === 'TRUE' || param === 'true';
   }
 
-  return param;
+	// Do any additional validations requested
+	if (schema.minimum !== undefined && newParam < schema.minimum) {
+		throw new Error(`Invalid param '${fieldName}' in ${fieldIn}: must be >= ${schema.minimum}`);
+	}
+
+	if (schema.maximum !== undefined && newParam > schema.maximum) {
+		throw new Error(`Invalid param '${fieldName}' in ${fieldIn}: must be <= ${schema.maximum}`);
+	}
+
+	if (schema.minLength !== undefined && typeof newParam === 'string' && newParam.length < schema.minLength) {
+		throw new Error(`Invalid param '${fieldName}' in ${fieldIn}: length must be >= ${schema.minLength}`);
+	}
+
+	if (schema.maxLength !== undefined && typeof newParam === 'string' && newParam.length > schema.maxLength) {
+		throw new Error(`Invalid param '${fieldName}' in ${fieldIn}: length must be <= ${schema.maxLength}`);
+	}
+
+	if (schema.enum !== undefined && !schema.enum.includes(newParam)) {
+		throw new Error(`Invalid param '${fieldName}' in ${fieldIn}: must be one of "${schema.enum.join(', ')}"`);
+	}
+
+	return newParam;
 };

@@ -241,10 +241,12 @@ app.get(
 
 Note that when generating OpenAPI documentation via `express-route-parser`, the `path` parameter can normally be
 automatically determined. However, ExpressJS supports complex routes with aliases, RegEx matching, and other
-options that don't cleanly map to OpenAPI specifications. If provided, `path` can be used to specify the
-"OpenAPI equivalent" path for generating documentation about the endpoint.
+options that don't cleanly map to OpenAPI specifications. If you see odd paths emitted like 
+`'/(?:^\\/templates\\/?(?=\\/|$)|^\\/documents\\/?(?=\\/|$))/i/list'`, you can provide the `path` property to
+explicitly set the path that will be shown in the documentation.
 
-Some OpenAPI schema types can be used to simplify formatting and validation operations:
+Some OpenAPI schema properties can be also used to simplify formatting and validation operations. Here, page will
+be both formatted and validated as an integer:
 
 ```typescript
 import {MetaGuard} from 'express-meta-guard';
@@ -254,13 +256,24 @@ app.get(
   MetaGuard({
     name: 'getBooks',
     parameters: {
-      page: {in: 'query', required: true, formatter: (val: any) => +val},
-      showReserved: {in: 'query', default: 10, formatter: (val: any) => +val},
+      page: {in: 'query', schema: {type: 'integer'}},
     },
   }),
   booksController.getBooks,
 );
 ```
+
+Bear in mind that in Javascript, not all OpenAPI types have as much meaning. For example, all floats
+are 64-bit in JS, so there is no differentiation between 'float' and 'double'. Currently, only `string`,
+`integer`, `number`, and `boolean` will be enforced.
+
+Currently the supported schema-based conversions and validations are:
+- Converting to string, integer, number, and boolean
+- For integers and numbers, checking that the input was a valid number
+- For booleans, supporting string values of `1`, `True`, `TRUE`, and boolean `true` as inputs
+- For integers and numbers, the `minimum` and `maximum` value properties
+- For strings, the `minLength` and `maxLength` properties
+- For integers, numbers, and strings, the `enum` property 
 
 ## Generating Documentation
 

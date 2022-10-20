@@ -121,7 +121,7 @@ describe('Schemas', () => {
       annotateLocals: 'inputs',
     })(req, res, next);
 
-    expect(next).toBeCalledWith(new Error("Invalid param 'page' in path"));
+    expect(next).toBeCalledWith(new Error("Invalid param 'page' in path: integer required"));
     expect(res.locals.inputs).toBeUndefined();
   });
 
@@ -139,7 +139,7 @@ describe('Schemas', () => {
       annotateLocals: 'inputs',
     })(req, res, next);
 
-    expect(next).toBeCalledWith(new Error("Invalid param 'page' in path"));
+    expect(next).toBeCalledWith(new Error("Invalid param 'page' in path: number required"));
     expect(res.locals.inputs).toBeUndefined();
   });
 
@@ -157,7 +157,104 @@ describe('Schemas', () => {
       annotateLocals: 'inputs',
     })(req, res, next);
 
-    expect(next).toBeCalledWith(new Error("Invalid param 'enabled' in path"));
+    expect(next).toBeCalledWith(new Error("Invalid param 'enabled' in path: boolean required"));
+    expect(res.locals.inputs).toBeUndefined();
+  });
+
+  test('minimum values will be checked', async () => {
+    const req = getMockReq({query: {page: '0'}});
+    await MetaGuard({
+      parameters: {
+        page: {
+          in: 'query',
+          schema: {
+            type: 'integer',
+            minimum: 1,
+          },
+        },
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(next).toBeCalledWith(new Error("Invalid param 'page' in query: must be >= 1"));
+    expect(res.locals.inputs).toBeUndefined();
+  });
+
+  test('maximum values will be checked', async () => {
+    const req = getMockReq({query: {page: '100'}});
+    await MetaGuard({
+      parameters: {
+        page: {
+          in: 'query',
+          schema: {
+            type: 'integer',
+            maximum: 50,
+          },
+        },
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(next).toBeCalledWith(new Error("Invalid param 'page' in query: must be <= 50"));
+    expect(res.locals.inputs).toBeUndefined();
+  });
+
+  test('minimum lengths will be checked', async () => {
+    const req = getMockReq({query: {countryCode: 'A'}});
+    await MetaGuard({
+      parameters: {
+        countryCode: {
+          in: 'query',
+          schema: {
+            type: 'string',
+            minLength: 2,
+            maxLength: 3,
+          },
+        },
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(next).toBeCalledWith(new Error("Invalid param 'countryCode' in query: length must be >= 2"));
+    expect(res.locals.inputs).toBeUndefined();
+  });
+
+  test('maximum lengths will be checked', async () => {
+    const req = getMockReq({query: {countryCode: 'ABCD'}});
+    await MetaGuard({
+      parameters: {
+        countryCode: {
+          in: 'query',
+          schema: {
+            type: 'string',
+            minLength: 2,
+            maxLength: 3,
+          },
+        },
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(next).toBeCalledWith(new Error("Invalid param 'countryCode' in query: length must be <= 3"));
+    expect(res.locals.inputs).toBeUndefined();
+  });
+
+  test('enums lengths will be checked', async () => {
+    const req = getMockReq({body: {lang: 'zz'}});
+    await MetaGuard({
+      parameters: {
+        lang: {
+          in: 'body',
+          schema: {
+            type: 'string',
+            enum: ['en', 'es', 'fr'],
+          },
+        },
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(next).toBeCalledWith(new Error('Invalid param \'lang\' in body: must be one of "en, es, fr"'));
     expect(res.locals.inputs).toBeUndefined();
   });
 });

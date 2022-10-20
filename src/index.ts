@@ -1,6 +1,6 @@
 import {NextFunction, Request, Response} from 'express';
-import {IMetaGuardProps} from './types';
 import {getParam, validateSchema} from './params';
+import {IMetaGuardProps} from './types';
 export * from './types';
 
 export const MetaGuard = (props: IMetaGuardProps) => {
