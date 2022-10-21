@@ -10,7 +10,7 @@
 ## Overview
 
 Express is the most popular NodeJS framework for building APIs with good reason: it combines high performance,
-easy of use, and a large number of third-party contrib modules to create an ecosystem that makes it easy to
+ease of use, and a large number of third-party contrib modules to create an ecosystem that makes it easy to
 quickly build sophisticated, high-performance APIs.
 
 Unfortunately, its imperative style of declaring routes and handlers can make it more challenging to document
@@ -21,15 +21,14 @@ has no built-in mechanism to support this. Although there have been some
 [shared](https://github.com/mpashkovskiy/express-oas-generator) by the community to provide Swagger/OpenAPI
 documentation from Express APIs, they all have one or more compromises to be made:
 
-1. Generators that use documentation blocks create messy routing files. OpenAPI is a very verbose spec, and
+1. Generators that use comment blocks create messy routing files. OpenAPI is a very verbose spec, and
    documentation blocks can sometimes be 3-4x the length of the handler code.
-1. Documentation blocks also offer no "code assistance" to the developer. It is very easy to make even simple
-   typo-level mistakes that break your documentation, and developers must memorize all of the available options
-   to specify.
+1. Comment blocks also offer no "code assistance" to the developer. It is very easy to make even simple typo-level
+   mistakes that break your documentation, and developers must memorize all of the available options to specify.
 1. Generators that scan or observe the code itself are not sophisticated enough to capture all of the critical
    details from a modern code base, especially TypeScript interfaces and types, response models, and middleware
    processors guards.
-1. All of the current solutions fail to combine _documentation_ with _enforcement_. It is too easy to make simple
+1. All of the current solutions fail to combine **documentation** with **enforcement**. It is too easy to make simple
    mistakes such as marking an input field as required but not fully enforcing it in the code itself. This can
    lead to bugs, security vulnerabilities, and other unexpected behavior.
 1. It is still up to developers to implement repetitive, "common sense" handlers, e.g. converting path and query
@@ -40,17 +39,15 @@ documentation from Express APIs, they all have one or more compromises to be mad
 Express Meta Guard takes a new approach to these options, making it easier to document ExpressJS APIs while also
 enforcing the rules that the documentation specifies.
 
-This module is an ExpressJS middleware/guard that provides input validation and documentation at the same
-time. It allows metadata such as operation names, inputs, and responses to be specified inline with route definitions,
-making them easy for developers to maintain as routes are created/enhanced. But unlike documentation-only methods,
-those definitions are also enforced. If a field is required or must be of a certain type or format, those rules
-are checked before the handler is called.
+This module is an ExpressJS middleware that provides input validation and sanitization, with the ability to export
+documentation from the guard's metadata. This allows operation names, inputs, and responses to be specified inline
+with route definitions, making it easy for developers to maintain as routes are created/enhanced.
 
 ```typescript
 app.get(
   '/books',
   MetaGuard({
-    name: 'getBooks',
+    operationId: 'getBooks',
     description: 'Get a paginated list of all available books.',
     parameters: {
       page: {in: 'query', required: true, formatter: (val: any) => +val},
@@ -63,7 +60,7 @@ app.get(
 ```
 
 Then, via [Express Route Parser](https://github.com/nklisch/express-route-parser) or other helpers, this module
-can generate OpenAPI compatible documentation for an API. If you provide a folder of models, you can even reference
+can generate OpenAPI-compatible documentation for an API. If you provide a folder of models, you can even reference
 those models in your documentation, which is particularly useful for return types! See below for information on
 how to do this.
 
@@ -72,13 +69,13 @@ how to do this.
 Simply install this package in your project as a devDependency. Via NPM:
 
 ```bash
-npm i -D express-route-parser
+npm i -D express-meta-guard
 ```
 
 or Yarn:
 
 ```bash
-yarn add -D express-route-parser
+yarn add -D express-meta-guard
 ```
 
 ## Usage
@@ -92,15 +89,19 @@ import {MetaGuard} from 'express-meta-guard';
 app.get(
   '/books',
   MetaGuard({
-    name: 'getBooks',
+    operationId: 'getBooks',
     description: 'Get a paginated list of all available books.',
   }),
-  booksController.getBooks,
+  (req, res) => {
+    res.json([{id: 1, title: 'To Kill a Mockingbird'}]);
+  },
 );
 ```
 
 Inputs may be formatted, which is especially useful for path and query params that always arrive as strings.
-Formatters receive (value, req) as parameters:
+Formatters receive (value, req) as parameters. You can also have MetaGuard pass along the final list of
+post-processed parameters (you will almost always want to do this when using formatters) with the `annotateLocals`
+option, which should be a string key that will be set on `res.locals`:
 
 ```typescript
 import {MetaGuard} from 'express-meta-guard';
@@ -108,35 +109,18 @@ import {MetaGuard} from 'express-meta-guard';
 app.get(
   '/books',
   MetaGuard({
-    name: 'getBooks',
-    parameters: {
-      page: {in: 'query', formatter: (val: any) => +val},
-      showReserved: {in: 'query', formatter: (val: any) => val === 'true'},
-    },
-  }),
-  booksController.getBooks,
-);
-```
-
-For your convenience, you will almost always want to have MetaGuard pass along the final list of post-processed
-parameters. You can do this with the `annotateLocals` option, which should be a string key that will be set on
-`res.locals`:
-
-```typescript
-import {MetaGuard} from 'express-meta-guard';
-
-app.get(
-  '/books',
-  MetaGuard({
+    operationId: 'getBooks',
     annotateLocals: 'inputs',
-    name: 'getBooks',
     parameters: {
       page: {in: 'query', formatter: (val: any) => +val},
+      reserved: {in: 'query', formatter: (val: any) => val === 'true'},
     },
   }),
-  (req, res, next) => {
-    console.log(res.locals.inputs.page); // <== Will be the "page" query parameter
-    next();
+  (req, res) => {
+    const {page, reserved} = res.locals.inputs;
+    const matchingBooks = AllBooks.filter((book) => book.reserved === reserved);
+    const results = matchingBooks.slice(page * 10, page * 10 + 10);
+    res.json(results);
   },
 );
 ```
@@ -153,7 +137,7 @@ import {MetaGuard} from 'express-meta-guard';
 app.get(
   '/books',
   MetaGuard({
-    name: 'getBooks',
+    operationId: 'getBooks',
     parameters: {
       companyId: {
         in: 'path',
@@ -194,7 +178,7 @@ import {companyExists, companyTypeIsValid, stringToBool, companyTypePublic} from
 app.get(
   '/books',
   MetaGuard({
-    name: 'getBooks',
+    operationId: 'getBooks',
     parameters: {
       companyId: {in: 'path', validator: companyExists},
       companyType: {in: 'path', validator: companyTypeIsValid},
@@ -216,7 +200,7 @@ app.get(
   '/books',
   MetaGuard({
     // The human-friendly operation name
-    name: 'getBooks',
+    operationId: 'getBooks',
     // Explicitly specify the endpoint's path, see below
     path: '/books',
     // OpenAPI summary, description, and tags fields
@@ -230,10 +214,9 @@ app.get(
     // List of accepted input parameters. Most OpenAPI options apply
     parameters: {},
 
-    // If "output" is set to a simple object, will be used to generate a standard OpenAPI "object" schema with
-    // properties specified inline. This is simple, but not very accurate. If set to a string, will be emitted
-    // in the documentation as a reference, e.g. '#/components/schemas/Book'.
-    output: any;
+    // Responses is not used by Express Meta Guard, but required by OpenAPI. A full OpenAPI definition may be
+    // included, or shorthand may be used to refer to simple schema types and arrays of types.
+    responses: {'200': '#/components/schemas/Book[]'},
   }),
   booksController.getBooks,
 );
@@ -254,7 +237,7 @@ import {MetaGuard} from 'express-meta-guard';
 app.get(
   '/books',
   MetaGuard({
-    name: 'getBooks',
+    operationId: 'getBooks',
     parameters: {
       page: {in: 'query', schema: {type: 'integer'}},
     },

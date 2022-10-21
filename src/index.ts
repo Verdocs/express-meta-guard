@@ -10,7 +10,7 @@ export const MetaGuard = (props: IMetaGuardProps) => {
       const parsedInputs: Record<string, any> = {};
       const inputs = props.parameters ? Object.entries(props.parameters) : [];
       if (inputs.length > 0) {
-        for await (let input of inputs) {
+        for await (const input of inputs) {
           const [fieldName, fieldConfig] = input;
           const {in: fieldIn, required = false, validator, formatter, schema} = fieldConfig;
 
