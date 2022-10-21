@@ -62,9 +62,9 @@ app.get(
 );
 ```
 
-Then, via [Express Route Parser](https://github.com/nklisch/express-route-parser), this module can generate
-OpenAPI compatible documentation for an API. If you provide a folder of models, you can even reference those
-models in your documentation, which is particularly useful for return types! See below for information on
+Then, via [Express Route Parser](https://github.com/nklisch/express-route-parser) or other helpers, this module
+can generate OpenAPI compatible documentation for an API. If you provide a folder of models, you can even reference
+those models in your documentation, which is particularly useful for return types! See below for information on
 how to do this.
 
 ## Installation
@@ -128,7 +128,7 @@ import {MetaGuard} from 'express-meta-guard';
 app.get(
   '/books',
   MetaGuard({
-	annotateLocals: 'inputs',
+    annotateLocals: 'inputs',
     name: 'getBooks',
     parameters: {
       page: {in: 'query', formatter: (val: any) => +val},
@@ -136,7 +136,7 @@ app.get(
   }),
   (req, res, next) => {
     console.log(res.locals.inputs.page); // <== Will be the "page" query parameter
-	next();
+    next();
   },
 );
 ```
@@ -180,7 +180,7 @@ app.get(
 );
 ```
 
-Note that validators run after formatters, so they should check the expected types, not the source types. Also, 
+Note that validators run after formatters, so they should check the expected types, not the source types. Also,
 they do not have access to the final, annotated list of inputs even if `annotateLocals` is set. This is because
 this module will terminate early if any violation is detected, avoiding unnecessary work in later validators.
 
@@ -196,9 +196,9 @@ app.get(
   MetaGuard({
     name: 'getBooks',
     parameters: {
-      companyId: { in: 'path', validator: companyExists },
-      companyType: { in: 'path', validator: companyTypeIsValid },
-      showPublicFilings: { in: 'query', formatter: stringToBool, validator: companyTypePublic },
+      companyId: {in: 'path', validator: companyExists},
+      companyType: {in: 'path', validator: companyTypeIsValid},
+      showPublicFilings: {in: 'query', formatter: stringToBool, validator: companyTypePublic},
     },
   }),
   booksController.getBooks,
@@ -217,9 +217,9 @@ app.get(
   MetaGuard({
     // The human-friendly operation name
     name: 'getBooks',
-    // Explicitly specify the endpoint's path, see below 
+    // Explicitly specify the endpoint's path, see below
     path: '/books',
-    // OpenAPI summary, description, and tags fields 
+    // OpenAPI summary, description, and tags fields
     summary: 'Get books.',
     description: 'Get a paginated list of all available books.',
     tags: ['Books'],
@@ -241,7 +241,7 @@ app.get(
 
 Note that when generating OpenAPI documentation via `express-route-parser`, the `path` parameter can normally be
 automatically determined. However, ExpressJS supports complex routes with aliases, RegEx matching, and other
-options that don't cleanly map to OpenAPI specifications. If you see odd paths emitted like 
+options that don't cleanly map to OpenAPI specifications. If you see odd paths emitted like
 `'/(?:^\\/templates\\/?(?=\\/|$)|^\\/documents\\/?(?=\\/|$))/i/list'`, you can provide the `path` property to
 explicitly set the path that will be shown in the documentation.
 
@@ -268,12 +268,67 @@ are 64-bit in JS, so there is no differentiation between 'float' and 'double'. C
 `integer`, `number`, and `boolean` will be enforced.
 
 Currently the supported schema-based conversions and validations are:
+
 - Converting to string, integer, number, and boolean
 - For integers and numbers, checking that the input was a valid number
 - For booleans, supporting string values of `1`, `True`, `TRUE`, and boolean `true` as inputs
-- For integers and numbers, the `minimum` and `maximum` value properties
+- For integers and numbers, the `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` value properties
 - For strings, the `minLength` and `maxLength` properties
-- For integers, numbers, and strings, the `enum` property 
+- For integers, numbers, and strings, the `enum` property
+
+## Responses
+
+Responses are not enforced, but types are still provided to encourage OpenAPI-compatible documentation practices.
+Although you can specify the full OpenAPI-compatible response objects, these tend to be very long because OpenAPI
+supports XML and other encodings. Since ExpressJS APIs are almost always JSON-oriented, types are provided to allow
+shorthand for the most common operations. For example:
+
+```typescript
+"responses": {
+  "200": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Book"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+can be reduced to:
+
+```typescript
+"responses": {"200": "#/components/schemas/Book[]"}
+```
+
+Note the use of `[]` at the end of the ref to generate an array-type reference.
+
+The documentation generation script can easily generate the "standard 200-OK" response documentation block from this
+shorthand. Since most APIs also have standard responses for "Not Found", "Illegal Input", and other server errors,
+these typically just become boilerplate that the documentation generator can append as well.
 
 ## Generating Documentation
 
+Producing documentation in OpenAPI, Markdown, or other formats is frequently project-specific. One project may have
+simple models mapped to schema-less backends, while another might use an ORM capable of emitting models directly from
+table definitions.
+
+Rather than trying to cover every option here, an example project is provided in the `example/` directory with a
+simple approach. In that project, a `generate-docs.ts` script illustrates one easy way to generate OpenAPI
+documentation, and you may customize it from there.
+
+## Exceptions / Limitations
+
+A major goal for this module is simplicity and brevity, trying to avoid cases where lines of documentation exceed
+lines of code. Some exceptions were made to OpenAPI standards to support this. THe biggest is that parameters may
+have a location of `body` (OpenAPI places body parameter documentation in a separate `requestBody` block). The
+generation script can easily rewrite this to stay compatible, leaving developers free to use a briefer syntax when
+parameters may come from multiple sources.
+
+Additionally, there is currently no support for some API-wide OpenAPI settings such as `securitySchemes`. Developers
+can customize the generator to add these.

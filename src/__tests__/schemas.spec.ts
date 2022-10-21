@@ -199,6 +199,44 @@ describe('Schemas', () => {
     expect(res.locals.inputs).toBeUndefined();
   });
 
+  test('exclusive minimum values will be checked', async () => {
+    const req = getMockReq({query: {page: '0'}});
+    await MetaGuard({
+      parameters: {
+        page: {
+          in: 'query',
+          schema: {
+            type: 'integer',
+            exclusiveMinimum: 0,
+          },
+        },
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(next).toBeCalledWith(new Error("Invalid param 'page' in query: must be > 0"));
+    expect(res.locals.inputs).toBeUndefined();
+  });
+
+  test('xeclusive maximum values will be checked', async () => {
+    const req = getMockReq({query: {page: '100'}});
+    await MetaGuard({
+      parameters: {
+        page: {
+          in: 'query',
+          schema: {
+            type: 'integer',
+            exclusiveMaximum: 100,
+          },
+        },
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(next).toBeCalledWith(new Error("Invalid param 'page' in query: must be < 100"));
+    expect(res.locals.inputs).toBeUndefined();
+  });
+
   test('minimum lengths will be checked', async () => {
     const req = getMockReq({query: {countryCode: 'A'}});
     await MetaGuard({
@@ -256,5 +294,23 @@ describe('Schemas', () => {
 
     expect(next).toBeCalledWith(new Error('Invalid param \'lang\' in body: must be one of "en, es, fr"'));
     expect(res.locals.inputs).toBeUndefined();
+  });
+
+  test('defaults will be used for missing parameters', async () => {
+    const req = getMockReq({query: {}});
+    await MetaGuard({
+      parameters: {
+        limit: {
+          in: 'query',
+          schema: {
+            type: 'integer',
+            default: 10,
+          },
+        },
+      },
+      annotateLocals: 'inputs',
+    })(req, res, next);
+
+    expect(res.locals.inputs.limit).toEqual(10);
   });
 });

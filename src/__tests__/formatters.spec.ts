@@ -30,7 +30,7 @@ describe('Formatters and Defaults', () => {
     await MetaGuard({
       parameters: {
         page: {in: 'path', formatter: (val: any) => +val},
-        count: {in: 'path', formatter: (val: any) => +val, default: 10},
+        count: {in: 'path', formatter: (val: any) => +val, schema: {default: 10}},
       },
       annotateLocals: 'parameters',
     })(req, res, next);
@@ -44,7 +44,7 @@ describe('Formatters and Defaults', () => {
     await MetaGuard({
       parameters: {
         page: {in: 'path', formatter: (val: any) => +val},
-        count: {in: 'path', formatter: (val: any) => +val, default: 10},
+        count: {in: 'path', formatter: (val: any) => +val, schema: {default: 10}},
       },
       annotateLocals: 'parameters',
     })(req, res, next);

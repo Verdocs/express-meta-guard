@@ -1,6 +1,7 @@
 import {NextFunction, Request, Response} from 'express';
 import {getParam, validateSchema} from './params';
 import {IMetaGuardProps} from './types';
+import { InvalidParameterError } from './errors';
 export * from './types';
 
 export const MetaGuard = (props: IMetaGuardProps) => {
@@ -11,7 +12,7 @@ export const MetaGuard = (props: IMetaGuardProps) => {
       if (inputs.length > 0) {
         for await (let input of inputs) {
           const [fieldName, fieldConfig] = input;
-          const {in: fieldIn, required = false, validator, formatter, schema, default: fieldDefault} = fieldConfig;
+          const {in: fieldIn, required = false, validator, formatter, schema} = fieldConfig;
 
           let param = getParam(req, fieldName, fieldIn);
           if (param !== undefined) {
@@ -33,10 +34,10 @@ export const MetaGuard = (props: IMetaGuardProps) => {
               const validationResult = await validator(param, req);
               if (validationResult !== undefined) {
                 if (typeof validationResult === 'string') {
-                  next(new Error(validationResult));
+                  next(new InvalidParameterError(validationResult));
                   return;
                 } else if (validationResult === false) {
-                  next(new Error(`Invalid param '${fieldName}' in ${fieldIn}`));
+                  next(new InvalidParameterError(`Invalid param '${fieldName}' in ${fieldIn}`));
                   return;
                 }
               }
@@ -44,10 +45,10 @@ export const MetaGuard = (props: IMetaGuardProps) => {
 
             parsedInputs[fieldName] = param;
           } else {
-            if (fieldDefault) {
-              param = fieldDefault;
+            if (schema && schema.default) {
+              param = schema.default;
             } else if (required) {
-              next(new Error(`Missing required param '${fieldName}' in ${fieldIn}`));
+              next(new InvalidParameterError(`Missing required param '${fieldName}' in ${fieldIn}`));
               return;
             }
 

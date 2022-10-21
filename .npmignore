@@ -1,6 +1,6 @@
 /.idea
-__mocks__
 /coverage
+/example
 /src
 .prettierrc.js
 jestconfig.json
