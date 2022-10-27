@@ -307,11 +307,13 @@ documentation, and you may customize it from there.
 
 ## Exceptions / Limitations
 
-A major goal for this module is simplicity and brevity, trying to avoid cases where lines of documentation exceed
-lines of code. Some exceptions were made to OpenAPI standards to support this. THe biggest is that parameters may
-have a location of `body` (OpenAPI places body parameter documentation in a separate `requestBody` block). The
-generation script can easily rewrite this to stay compatible, leaving developers free to use a briefer syntax when
-parameters may come from multiple sources.
+A major goal for this module is simplicity and brevity - trying to avoid cases where lines of documentation exceed
+lines of code. A few exceptions were made to OpenAPI standards to enable this. In particular:
+
+1. Parameters may have a location of `body`, so it is not necessary to separately define `requestBody`.
+2. Responses may be written in `'code': '#ref'` shorthand instead of the verbose `code...> content...> type...> schema...>` 
+  structure.
+3. Ref arrays may be written in `#/components/schemas/Book[]` style instead of `schema...> type: array...> items...> ref`.
 
 Additionally, there is currently no support for some API-wide OpenAPI settings such as `securitySchemes`. Developers
 can customize the generator to add these.
