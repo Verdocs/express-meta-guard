@@ -49,6 +49,15 @@ describe('Input Handling', () => {
     expect(res.locals.parameters).toEqual({count: 10});
   });
 
+  test('empty bodies should be tolerated', async () => {
+		// This happens in some cases in Express but getMockReq always defines one so we need to alter it
+    const req = getMockReq({});
+		delete req.body;
+    await MetaGuard({parameters: {name: {in: 'path'}, count: {in: 'body'}}, annotateLocals: 'parameters'})(req, res, next);
+
+    expect(next).toBeCalled();
+  });
+
   test('parameters should be parsed from headers', async () => {
     const req = getMockReq({headers: {Authorization: 'Bearer 1234'}});
     await MetaGuard({parameters: {name: {in: 'path'}, Authorization: {in: 'header'}}, annotateLocals: 'parameters'})(req, res, next);

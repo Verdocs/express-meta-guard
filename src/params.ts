@@ -1,6 +1,6 @@
 import {Request} from 'express';
 import {IParameterSchema, TParamSource} from './types';
-import { InvalidParameterError } from './errors';
+import {InvalidParameterError} from './errors';
 
 export const getParam = (req: Request, field: string, source: TParamSource) => {
   if (source === 'path') {
@@ -8,7 +8,12 @@ export const getParam = (req: Request, field: string, source: TParamSource) => {
   } else if (source === 'query') {
     return req.query[field];
   } else if (source === 'body') {
-    return req.body[field];
+    // Body is not guaranteed to be defined
+    if (req.body && typeof req.body === 'object') {
+      return req.body[field];
+    } else {
+      return undefined;
+    }
   } else if (source === 'header') {
     return req.headers[field];
   } else if (source === 'cookie') {

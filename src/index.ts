@@ -1,7 +1,7 @@
-import {NextFunction, Request, Response} from 'express';
+import {NextFunction, Request, Response, RequestHandler} from 'express';
 import {getParam, validateSchema} from './params';
+import {InvalidParameterError} from './errors';
 import {IMetaGuardProps} from './types';
-import { InvalidParameterError } from './errors';
 export * from './types';
 
 export const MetaGuard = (props: IMetaGuardProps) => {
@@ -71,5 +71,5 @@ export const MetaGuard = (props: IMetaGuardProps) => {
     guard.metadata = props;
   }
 
-  return guard;
+  return guard as RequestHandler & { metadata: any };
 };
